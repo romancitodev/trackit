@@ -1,0 +1,16 @@
+[package]
+name = "trackit"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+members = ["crates/*"]
+
+[workspace.dependencies]
+iced = { version = "0.13.1", features = ["canvas", "tokio", "advanced"] }
+
+[dependencies]
+iced.workspace = true
+
+[dependencies.atoms]
+path = "crates/atoms"
