@@ -15,6 +15,9 @@ iced.workspace = true
 [dependencies.atoms]
 path = "crates/atoms"
 
+[dependencies.trackit_core]
+path = "crates/trackit_core"
+
 [dependencies.iced_aw]
 version = "0.11"
 features = ["number_input"]
