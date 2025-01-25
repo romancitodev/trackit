@@ -16,6 +16,7 @@ pub enum Message {
     /// Message variant for when the cycles changes.
     CyclesChanged(u8),
     Cancel,
+    CreateNewTask,
 }
 
 /// The `Modal` struct represents the state of the modal
@@ -55,7 +56,7 @@ impl<'a> Modal {
                         button("Cancel")
                             .style(button::danger)
                             .on_press(Message::Cancel),
-                        button("Create")
+                        button("Create").on_press(Message::CreateNewTask)
                     ]
                     .spacing(8)
                 )
@@ -76,7 +77,7 @@ impl<'a> Modal {
         match msg {
             Message::TaskNameChanged(user) => self.task_name = user,
             Message::CyclesChanged(cycles) => self.cycles = cycles,
-            Message::Cancel => {}
+            Message::Cancel | Message::CreateNewTask => {}
         }
     }
 
