@@ -14,3 +14,7 @@ iced.workspace = true
 
 [dependencies.atoms]
 path = "crates/atoms"
+
+[dependencies.iced_aw]
+version = "0.11"
+features = ["number_input"]

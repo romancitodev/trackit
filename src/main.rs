@@ -16,7 +16,7 @@ pub struct App {
     should_stop: bool,
 }
 
-/// The Message enum for the app
+/// The Message enum fort the app
 #[derive(Debug, Clone)]
 pub enum Message {
     Tick,
@@ -73,8 +73,11 @@ impl App {
                 self.should_stop = false;
                 self.progress = 0.
             }
+            Message::Modal(widgets::modal::Message::Cancel) | Message::CloseModal => {
+                self.modal.reset();
+                self.show_modal = false
+            }
             Message::Modal(msg) => self.modal.update(msg),
-            Message::CloseModal => self.show_modal = false,
             Message::OpenModal => self.show_modal = true,
         };
     }
