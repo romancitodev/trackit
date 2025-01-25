@@ -3,10 +3,18 @@ mod widgets;
 
 use iced::{
     application, time,
-    widget::{button, column, container, row},
-    Color, Length, Renderer, Subscription, Theme,
+    widget::{
+        button, column, container, row,
+        rule::{self, Style},
+        vertical_rule,
+    },
+    Length, Renderer, Subscription, Theme,
 };
-use widgets::modal::Modal;
+use trackit_core::Task;
+use widgets::{
+    modal::Modal,
+    tasks::{placeholder, task_card},
+};
 
 #[derive(Default)]
 pub struct App {
@@ -14,6 +22,7 @@ pub struct App {
     show_modal: bool,
     progress: f32,
     should_stop: bool,
+    tasks: Vec<Task>,
 }
 
 /// The Message enum fort the app
@@ -34,6 +43,16 @@ impl App {
     const TITLE: &str = "Demo app";
 
     pub fn view(&self) -> Element<Message> {
+        let cards = self
+            .tasks
+            .iter()
+            .map(task_card::<Message>)
+            .chain(self.tasks.is_empty().then(placeholder));
+        let col = column(cards)
+            .width(Length::FillPortion(2))
+            .padding(8)
+            .spacing(8);
+
         let content: Element<_> = column![
             container(
                 radial_progress_bar(self.progress, "")
@@ -51,11 +70,27 @@ impl App {
             .spacing(5.)
             .width(Length::Fill)
         ]
-        .width(Length::Fill)
+        .width(Length::FillPortion(4))
         .height(Length::Fill)
         .into();
 
-        let content = content.explain(Color::from_rgb(255., 0., 0.));
+        let content: Element<_> = row![
+            row![
+                col,
+                vertical_rule(1).style(|theme: &Theme| Style {
+                    color: theme
+                        .extended_palette()
+                        .secondary
+                        .base
+                        .color
+                        .scale_alpha(0.2),
+                    ..rule::default(theme)
+                })
+            ],
+            content
+        ]
+        .into();
+        // let content = content.explain(Color::from_rgb(255., 0., 0.));
 
         if self.show_modal {
             self.modal.view(content)
@@ -72,6 +107,13 @@ impl App {
             Message::Restart => {
                 self.should_stop = false;
                 self.progress = 0.
+            }
+            Message::Modal(widgets::modal::Message::CreateNewTask) => {
+                self.tasks
+                    .push(Task::new(self.modal.task_name.clone(), self.modal.cycles));
+                self.modal.reset();
+                self.show_modal = false;
+                println!("{:?}", self.tasks);
             }
             Message::Modal(widgets::modal::Message::Cancel) | Message::CloseModal => {
                 self.modal.reset();

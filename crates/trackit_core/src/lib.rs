@@ -1,7 +1,18 @@
 #![allow(unused)]
 
+#[derive(Debug)]
 pub struct Task {
-    name: String,
-    cycles: u8,
-    started_at: Option<()>, // Option<DateTime>
+    pub name: String,
+    pub cycles: u8,
+    pub started_at: Option<()>, // Option<DateTime>
+}
+
+impl Task {
+    pub fn new(name: String, cycles: u8) -> Task {
+        Self {
+            name,
+            cycles,
+            started_at: None,
+        }
+    }
 }
