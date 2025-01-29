@@ -1,19 +1,51 @@
+use std::time::Duration;
+
 use iced::{
     alignment::Horizontal,
-    widget::{button, column, container, horizontal_rule, horizontal_space, row, text},
+    widget::{button, column, container, horizontal_rule, row, text},
     Element, Length,
 };
 use trackit_core::Task;
+
+fn format_duration(duration: Duration) -> String {
+    let total_secs = duration.as_secs();
+    let hours = total_secs / 3600;
+    let minutes = (total_secs % 3600) / 60;
+
+    if hours > 0 {
+        format!("{}h {:02}m", hours, minutes)
+    } else {
+        format!("{:02}m", minutes)
+    }
+}
+
+fn calculate_cycles(cycles: u8) -> String {
+    let time = Duration::from_secs(60 * 25 * cycles as u64);
+    let breaks = if cycles > 1 {
+        Duration::from_secs((cycles as u64 - 1) * 5 * 60)
+    } else {
+        Duration::ZERO
+    };
+
+    if breaks.is_zero() {
+        format_duration(time)
+    } else {
+        format!(
+            "{} + {} (tot. break time)",
+            format_duration(time),
+            format_duration(breaks)
+        )
+    }
+}
 
 pub fn task_card<'a>(task: &Task, index: u8) -> Element<'a, Message> {
     container(
         column![
             text(task.name.clone()),
             horizontal_rule(1),
-            row![
-                text(format!("{} cycles remaining", task.cycles)).style(text::secondary),
-                horizontal_space(),
-                text("(25:00m)").style(text::secondary)
+            column![
+                text(format!("{} cycles", task.cycles)).style(text::secondary),
+                text(calculate_cycles(task.cycles)).style(text::secondary)
             ],
             row![
                 button("Delete")

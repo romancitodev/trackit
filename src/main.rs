@@ -3,6 +3,8 @@ use std::time::Duration;
 use atoms::widgets::radial_progress_bar;
 use dragking::{self, DragEvent, DropPosition};
 
+use trackit_core::chrono::Utc;
+
 mod widgets;
 
 use iced::{
@@ -10,7 +12,7 @@ use iced::{
     widget::{
         button, column, container, row,
         rule::{self, Style},
-        vertical_rule,
+        text, vertical_rule,
     },
     Length, Renderer, Subscription, Theme,
 };
@@ -27,6 +29,7 @@ pub struct App {
     progress: f32,
     should_stop: bool,
     tasks: Vec<Task>,
+    started_task: Option<Task>,
 }
 
 /// The Message enum for the app
@@ -66,7 +69,17 @@ impl App {
             .padding(8)
             .spacing(8);
 
+        let task_msg = match &self.started_task {
+            Some(task) => format!(
+                "Task {} started at: {}",
+                task.name,
+                task.started_at.unwrap().format("%H:%M (%d/%m/%Y)")
+            ),
+            None => "Not active task".into(),
+        };
+
         let content: Element<_> = column![
+            text(task_msg),
             container(
                 radial_progress_bar(self.progress, "")
                     .width(100)
@@ -138,9 +151,8 @@ impl App {
             }
             Message::Modal(msg) => self.modal.update(msg),
             Message::OpenModal => self.show_modal = true,
-            Message::Card(widgets::tasks::Message::Delete(index)) => {
-                self.tasks.remove(index as usize);
-            }
+            Message::Card(widgets::tasks::Message::Delete(index)) => self.remove_task(index),
+            Message::Card(widgets::tasks::Message::Start(index)) => self.start_task(index),
             Message::Card(_) => println!("from message"),
             Message::Reorder(event) => {
                 if let DragEvent::Dropped {
@@ -175,6 +187,25 @@ impl App {
                 }
             }
         };
+    }
+
+    fn remove_task(&mut self, index: u8) {
+        if let Some(task) = &self.started_task {
+            if *task == self.tasks[index as usize] {
+                self.started_task = None;
+            }
+        }
+        self.tasks.remove(index as usize);
+    }
+
+    fn start_task(&mut self, index: u8) {
+        let task = self
+            .tasks
+            .get_mut(index as usize)
+            .expect("Unable to get the task");
+
+        task.started_at = Some(Utc::now());
+        self.started_task = Some(task.clone());
     }
 
     pub fn subscription(&self) -> iced::Subscription<Message> {

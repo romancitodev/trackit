@@ -1,7 +1,11 @@
+pub mod chrono {
+    pub use chrono::*;
+}
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Task {
     pub name: String,
     pub cycles: u8,
