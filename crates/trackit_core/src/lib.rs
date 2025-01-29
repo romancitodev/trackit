@@ -1,6 +1,6 @@
-#![allow(unused)]
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Task {
     pub name: String,
     pub cycles: u8,

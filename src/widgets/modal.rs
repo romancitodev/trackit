@@ -2,6 +2,7 @@ use crate::Message as AppMessage;
 use atoms::widgets::modal;
 use iced::{
     alignment::Vertical,
+    keyboard::{key::Named, Key},
     widget::{button, column, container, horizontal_space, row, text, text_input},
     Element, Length,
 };
@@ -24,6 +25,7 @@ pub enum Message {
 pub struct Modal {
     pub task_name: String,
     pub cycles: u8,
+    pub error_msg: Option<String>,
 }
 
 impl Default for Modal {
@@ -31,19 +33,24 @@ impl Default for Modal {
         Self {
             cycles: 1,
             task_name: String::default(),
+            error_msg: None,
         }
     }
 }
 
 impl<'a> Modal {
     pub fn view(&self, bg: impl Into<Element<'a, AppMessage>>) -> Element<'a, AppMessage> {
+        let full_field = column([
+            text("Task name:").into(),
+            text_input("Do some stuff", &self.task_name)
+                .on_input(Message::TaskNameChanged)
+                .into(),
+        ])
+        .push_maybe(self.error_msg.clone().map(|t| text(t).style(text::danger)));
+
         let content: Element<_> = container(
             column!(
-                column![
-                    text("Task name:"),
-                    text_input("Do some stuff", &self.task_name).on_input(Message::TaskNameChanged),
-                ]
-                .spacing(8),
+                full_field.spacing(8),
                 row![
                     text("Cycle count:"),
                     horizontal_space(),
@@ -75,13 +82,37 @@ impl<'a> Modal {
 
     pub fn update(&mut self, msg: Message) {
         match msg {
-            Message::TaskNameChanged(user) => self.task_name = user,
+            Message::TaskNameChanged(user) => {
+                self.task_name = user;
+                if self.task_name.is_empty() {
+                    self.set_error("You must provide a name for the task")
+                } else {
+                    self.error_msg = None
+                };
+            }
             Message::CyclesChanged(cycles) => self.cycles = cycles,
+            // catched at app level
             Message::Cancel | Message::CreateNewTask => {}
         }
     }
 
     pub fn reset(&mut self) {
         *self = Self::default()
+    }
+
+    pub fn subscription(&self) -> iced::Subscription<Message> {
+        iced::keyboard::on_key_press(|k, _| {
+            if k == Key::Named(Named::Enter) {
+                Some(Message::CreateNewTask)
+            } else if k == Key::Named(Named::Escape) {
+                Some(Message::Cancel)
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn set_error(&mut self, error: impl Into<String>) {
+        self.error_msg = Some(error.into())
     }
 }

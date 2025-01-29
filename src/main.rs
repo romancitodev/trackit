@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use atoms::widgets::radial_progress_bar;
 mod widgets;
 
@@ -25,7 +27,7 @@ pub struct App {
     tasks: Vec<Task>,
 }
 
-/// The Message enum fort the app
+/// The Message enum for the app
 #[derive(Debug, Clone)]
 pub enum Message {
     Tick,
@@ -33,6 +35,7 @@ pub enum Message {
     Resume,
     Restart,
     Modal(widgets::modal::Message),
+    Card(widgets::tasks::Message),
     OpenModal,
     CloseModal,
 }
@@ -46,7 +49,12 @@ impl App {
         let cards = self
             .tasks
             .iter()
-            .map(task_card::<Message>)
+            .rev()
+            .enumerate()
+            .map(|(i, task)| {
+                let i = self.tasks.len() - i - 1;
+                task_card(task, i as u8).map(Message::Card)
+            })
             .chain(self.tasks.is_empty().then(placeholder));
         let col = column(cards)
             .width(Length::FillPortion(2))
@@ -109,6 +117,10 @@ impl App {
                 self.progress = 0.
             }
             Message::Modal(widgets::modal::Message::CreateNewTask) => {
+                if self.modal.task_name.is_empty() {
+                    self.modal.set_error("You must provide a text for the task");
+                    return;
+                };
                 self.tasks
                     .push(Task::new(self.modal.task_name.clone(), self.modal.cycles));
                 self.modal.reset();
@@ -121,15 +133,21 @@ impl App {
             }
             Message::Modal(msg) => self.modal.update(msg),
             Message::OpenModal => self.show_modal = true,
+            Message::Card(widgets::tasks::Message::Delete(index)) => {
+                self.tasks.remove(index as usize);
+            }
+            Message::Card(_) => println!("from message"),
         };
     }
 
     pub fn subscription(&self) -> iced::Subscription<Message> {
-        if self.should_stop || self.progress >= 100. {
-            Subscription::none()
+        let time_sub = if !self.should_stop || self.progress >= 100. {
+            time::every(Duration::from_millis(10)).map(|_| Message::Tick)
         } else {
-            time::every(std::time::Duration::from_millis(10)).map(|_| Message::Tick)
-        }
+            Subscription::none()
+        };
+
+        iced::Subscription::batch([self.modal.subscription().map(Message::Modal), time_sub])
     }
 }
 
