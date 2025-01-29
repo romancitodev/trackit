@@ -1,6 +1,8 @@
 use std::time::Duration;
 
 use atoms::widgets::radial_progress_bar;
+use dragking::{self, DragEvent, DropPosition};
+
 mod widgets;
 
 use iced::{
@@ -36,6 +38,7 @@ pub enum Message {
     Restart,
     Modal(widgets::modal::Message),
     Card(widgets::tasks::Message),
+    Reorder(DragEvent),
     OpenModal,
     CloseModal,
 }
@@ -56,8 +59,10 @@ impl App {
                 task_card(task, i as u8).map(Message::Card)
             })
             .chain(self.tasks.is_empty().then(placeholder));
-        let col = column(cards)
+        let col = dragking::column(cards)
             .width(Length::FillPortion(2))
+            .on_drag(Message::Reorder)
+            .deadband_zone(0.0)
             .padding(8)
             .spacing(8);
 
@@ -137,6 +142,38 @@ impl App {
                 self.tasks.remove(index as usize);
             }
             Message::Card(_) => println!("from message"),
+            Message::Reorder(event) => {
+                if let DragEvent::Dropped {
+                    index,
+                    target_index,
+                    drop_position,
+                } = event
+                {
+                    let len = self.tasks.len();
+                    let index = len - index - 1;
+                    let target_index = len - target_index - 1;
+
+                    match drop_position {
+                        DropPosition::Before | DropPosition::After => {
+                            if target_index != index && target_index != index + 1 {
+                                let item = self.tasks.remove(index);
+                                let insert_index = if index < target_index {
+                                    target_index - 1
+                                } else {
+                                    target_index
+                                };
+
+                                self.tasks.insert(insert_index, item);
+                            }
+                        }
+                        DropPosition::Swap => {
+                            if target_index != index {
+                                self.tasks.swap(index, target_index);
+                            }
+                        }
+                    }
+                }
+            }
         };
     }
 

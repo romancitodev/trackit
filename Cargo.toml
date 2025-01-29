@@ -10,6 +10,7 @@ members = ["crates/*"]
 iced = { version = "0.13.1", features = ["canvas", "tokio", "advanced"] }
 
 [dependencies]
+dragking = { git = "https://github.com/airstrike/dragking", version = "0.1.0" }
 iced.workspace = true
 
 [dependencies.atoms]
