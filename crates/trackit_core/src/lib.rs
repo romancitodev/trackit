@@ -1,6 +1,9 @@
+/// `[chrono]` Re-exports
 pub mod chrono {
     pub use chrono::*;
 }
+
+use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -10,6 +13,7 @@ pub struct Task {
     pub name: String,
     pub cycles: u8,
     pub started_at: Option<DateTime<Utc>>,
+    pub elapsed: Duration,
 }
 
 impl Task {
@@ -18,6 +22,7 @@ impl Task {
             name,
             cycles,
             started_at: None,
+            elapsed: Duration::ZERO,
         }
     }
 }

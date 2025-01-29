@@ -143,7 +143,6 @@ impl App {
                     .push(Task::new(self.modal.task_name.clone(), self.modal.cycles));
                 self.modal.reset();
                 self.show_modal = false;
-                println!("{:?}", self.tasks);
             }
             Message::Modal(widgets::modal::Message::Cancel) | Message::CloseModal => {
                 self.modal.reset();
@@ -154,39 +153,45 @@ impl App {
             Message::Card(widgets::tasks::Message::Delete(index)) => self.remove_task(index),
             Message::Card(widgets::tasks::Message::Start(index)) => self.start_task(index),
             Message::Card(_) => println!("from message"),
-            Message::Reorder(event) => {
-                if let DragEvent::Dropped {
-                    index,
-                    target_index,
-                    drop_position,
-                } = event
-                {
-                    let len = self.tasks.len();
-                    let index = len - index - 1;
-                    let target_index = len - target_index - 1;
+            Message::Reorder(event) => self.handle_reorder(event),
+        }
+    }
 
-                    match drop_position {
-                        DropPosition::Before | DropPosition::After => {
-                            if target_index != index && target_index != index + 1 {
-                                let item = self.tasks.remove(index);
-                                let insert_index = if index < target_index {
-                                    target_index - 1
-                                } else {
-                                    target_index
-                                };
+    fn handle_reorder(&mut self, event: DragEvent) {
+        if let DragEvent::Dropped {
+            index,
+            target_index,
+            drop_position,
+        } = event
+        {
+            let len = self.tasks.len();
+            if len == 1 {
+                return;
+            };
 
-                                self.tasks.insert(insert_index, item);
-                            }
-                        }
-                        DropPosition::Swap => {
-                            if target_index != index {
-                                self.tasks.swap(index, target_index);
-                            }
-                        }
+            let index = len - index - 1;
+            let target_index = len - target_index - 1;
+
+            match drop_position {
+                DropPosition::Before | DropPosition::After => {
+                    if target_index != index && target_index != index + 1 {
+                        let item = self.tasks.remove(index);
+                        let insert_index = if index < target_index {
+                            target_index - 1
+                        } else {
+                            target_index
+                        };
+
+                        self.tasks.insert(insert_index, item);
+                    }
+                }
+                DropPosition::Swap => {
+                    if target_index != index {
+                        self.tasks.swap(index, target_index);
                     }
                 }
             }
-        };
+        }
     }
 
     fn remove_task(&mut self, index: u8) {
@@ -203,6 +208,12 @@ impl App {
             .tasks
             .get_mut(index as usize)
             .expect("Unable to get the task");
+
+        if let Some(started) = &self.started_task {
+            if task == started {
+                return;
+            };
+        }
 
         task.started_at = Some(Utc::now());
         self.started_task = Some(task.clone());
