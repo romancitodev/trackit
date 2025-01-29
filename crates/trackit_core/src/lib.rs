@@ -1,10 +1,11 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Task {
     pub name: String,
     pub cycles: u8,
-    pub started_at: Option<()>, // Option<DateTime>
+    pub started_at: Option<DateTime<Utc>>,
 }
 
 impl Task {
