@@ -1,9 +1,6 @@
 use std::time::Duration;
 
 use atoms::widgets::radial_progress_bar;
-use dragking::{self, DragEvent, DropPosition};
-
-use trackit_core::chrono::Utc;
 
 mod widgets;
 
@@ -17,10 +14,7 @@ use iced::{
     Length, Renderer, Subscription, Theme,
 };
 use trackit_core::Task;
-use widgets::{
-    modal::Modal,
-    tasks::{placeholder, task_card},
-};
+use widgets::{modal::Modal, tasks::Cards};
 
 #[derive(Default)]
 pub struct App {
@@ -28,8 +22,8 @@ pub struct App {
     show_modal: bool,
     progress: f32,
     should_stop: bool,
-    tasks: Vec<Task>,
     started_task: Option<Task>,
+    cards: Cards,
 }
 
 /// The Message enum for the app
@@ -41,7 +35,6 @@ pub enum Message {
     Restart,
     Modal(widgets::modal::Message),
     Card(widgets::tasks::Message),
-    Reorder(DragEvent),
     OpenModal,
     CloseModal,
 }
@@ -52,23 +45,6 @@ impl App {
     const TITLE: &str = "Demo app";
 
     pub fn view(&self) -> Element<Message> {
-        let cards = self
-            .tasks
-            .iter()
-            .rev()
-            .enumerate()
-            .map(|(i, task)| {
-                let i = self.tasks.len() - i - 1;
-                task_card(task, i as u8).map(Message::Card)
-            })
-            .chain(self.tasks.is_empty().then(placeholder));
-        let col = dragking::column(cards)
-            .width(Length::FillPortion(2))
-            .on_drag(Message::Reorder)
-            .deadband_zone(0.0)
-            .padding(8)
-            .spacing(8);
-
         let task_msg = match &self.started_task {
             Some(task) => format!(
                 "Task {} started at: {}",
@@ -102,7 +78,7 @@ impl App {
 
         let content: Element<_> = row![
             row![
-                col,
+                self.cards.view().map(Message::Card),
                 vertical_rule(1).style(|theme: &Theme| Style {
                     color: theme
                         .extended_palette()
@@ -127,7 +103,7 @@ impl App {
 
     pub fn update(&mut self, msg: Message) {
         match msg {
-            Message::Tick => self.progress = (self.progress + 0.1).min(100.),
+            Message::Tick => self.progress = (self.progress + 0.1).clamp(0.0, 100.),
             Message::Stop => self.should_stop = true,
             Message::Resume => self.should_stop = false,
             Message::Restart => {
@@ -139,8 +115,10 @@ impl App {
                     self.modal.set_error("You must provide a text for the task");
                     return;
                 };
-                self.tasks
-                    .push(Task::new(self.modal.task_name.clone(), self.modal.cycles));
+                let task = Task::new(self.modal.task_name.clone(), self.modal.cycles);
+                self.cards.add_card(task);
+                // self.tasks
+                //     .push(Task::new(self.modal.task_name.clone(), self.modal.cycles));
                 self.modal.reset();
                 self.show_modal = false;
             }
@@ -150,73 +128,42 @@ impl App {
             }
             Message::Modal(msg) => self.modal.update(msg),
             Message::OpenModal => self.show_modal = true,
-            Message::Card(widgets::tasks::Message::Delete(index)) => self.remove_task(index),
-            Message::Card(widgets::tasks::Message::Start(index)) => self.start_task(index),
-            Message::Card(_) => println!("from message"),
-            Message::Reorder(event) => self.handle_reorder(event),
-        }
-    }
-
-    fn handle_reorder(&mut self, event: DragEvent) {
-        if let DragEvent::Dropped {
-            index,
-            target_index,
-            drop_position,
-        } = event
-        {
-            let len = self.tasks.len();
-            if len == 1 {
-                return;
-            };
-
-            let index = len - index - 1;
-            let target_index = len - target_index - 1;
-
-            match drop_position {
-                DropPosition::Before | DropPosition::After => {
-                    if target_index != index && target_index != index + 1 {
-                        let item = self.tasks.remove(index);
-                        let insert_index = if index < target_index {
-                            target_index - 1
-                        } else {
-                            target_index
-                        };
-
-                        self.tasks.insert(insert_index, item);
-                    }
-                }
-                DropPosition::Swap => {
-                    if target_index != index {
-                        self.tasks.swap(index, target_index);
-                    }
-                }
+            Message::Card(msg @ widgets::tasks::Message::Delete(index)) => {
+                self.remove_task(index, msg)
             }
+            Message::Card(widgets::tasks::Message::Start(index)) => self.start_task(index),
+            Message::Card(msg) => self.cards.update(msg),
         }
     }
 
-    fn remove_task(&mut self, index: u8) {
+    fn remove_task(&mut self, index: u8, msg: widgets::tasks::Message) {
         if let Some(task) = &self.started_task {
-            if *task == self.tasks[index as usize] {
+            let card = self
+                .cards
+                .elements()
+                .get(index as usize)
+                .expect("Index expected");
+            if *task == card.task {
                 self.started_task = None;
             }
         }
-        self.tasks.remove(index as usize);
+        self.cards.update(msg);
     }
 
     fn start_task(&mut self, index: u8) {
-        let task = self
-            .tasks
+        let card = self
+            .cards
+            .mut_elements()
             .get_mut(index as usize)
-            .expect("Unable to get the task");
+            .expect("Index expected");
 
         if let Some(started) = &self.started_task {
-            if task == started {
+            if card.task == *started {
                 return;
             };
         }
 
-        task.started_at = Some(Utc::now());
-        self.started_task = Some(task.clone());
+        self.started_task = Some(card.task.clone());
     }
 
     pub fn subscription(&self) -> iced::Subscription<Message> {
