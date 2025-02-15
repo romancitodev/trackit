@@ -117,8 +117,6 @@ impl App {
                 };
                 let task = Task::new(self.modal.task_name.clone(), self.modal.cycles);
                 self.cards.add_card(task);
-                // self.tasks
-                //     .push(Task::new(self.modal.task_name.clone(), self.modal.cycles));
                 self.modal.reset();
                 self.show_modal = false;
             }
@@ -129,14 +127,19 @@ impl App {
             Message::Modal(msg) => self.modal.update(msg),
             Message::OpenModal => self.show_modal = true,
             Message::Card(msg @ widgets::tasks::Message::Delete(index)) => {
-                self.remove_task(index, msg)
+                self.remove_task(index);
+                self.cards.update(msg);
             }
-            Message::Card(widgets::tasks::Message::Start(index)) => self.start_task(index),
+            Message::Card(msg @ widgets::tasks::Message::Start(index)) => {
+                // we ensure that the `card.started_task` is `Some(...)`
+                self.cards.update(msg);
+                self.start_task(index);
+            }
             Message::Card(msg) => self.cards.update(msg),
         }
     }
 
-    fn remove_task(&mut self, index: u8, msg: widgets::tasks::Message) {
+    fn remove_task(&mut self, index: u8) {
         if let Some(task) = &self.started_task {
             let card = self
                 .cards
@@ -147,7 +150,6 @@ impl App {
                 self.started_task = None;
             }
         }
-        self.cards.update(msg);
     }
 
     fn start_task(&mut self, index: u8) {

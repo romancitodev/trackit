@@ -6,7 +6,7 @@ use iced::{
     widget::{button, column, container, horizontal_rule, mouse_area, row, text},
     Element, Length,
 };
-use trackit_core::{chrono::Utc, Task};
+use trackit_core::{chrono::Local, Task};
 
 fn format_duration(duration: Duration) -> String {
     let total_secs = duration.as_secs();
@@ -37,10 +37,6 @@ fn calculate_cycles(cycles: u8) -> String {
             format_duration(breaks)
         )
     }
-}
-
-pub fn task_card<'a>(task: &Task, index: u8) -> Element<'a, Message> {
-    Card::new(index, task.clone()).view()
 }
 
 #[derive(Debug, Clone)]
@@ -121,6 +117,10 @@ impl<'a> Card {
             _ => {}
         }
     }
+
+    fn set_index(&mut self, new_index: u8) {
+        self.index = new_index
+    }
 }
 
 #[derive(Default)]
@@ -129,6 +129,7 @@ pub struct Cards {
 }
 
 impl<'a> Cards {
+    #[expect(dead_code)]
     pub fn new(cards: Vec<Card>) -> Cards {
         Cards { elements: cards }
     }
@@ -171,7 +172,8 @@ impl<'a> Cards {
                     .elements
                     .get_mut(index as usize)
                     .expect("Unable to update");
-                element.task.started_at = Some(Utc::now());
+
+                element.task.started_at = Some(Local::now());
             }
             Message::Delete(index) => {
                 self.elements.remove(index as usize);
@@ -198,6 +200,7 @@ impl<'a> Cards {
             Message::Reorder(event) => self.handle_reorder(event),
         }
     }
+
     fn handle_reorder(&mut self, event: DragEvent) {
         if let DragEvent::Dropped {
             index,
@@ -210,8 +213,12 @@ impl<'a> Cards {
                 return;
             };
 
-            let index = len - index - 1;
-            let target_index = len - target_index - 1;
+            if index >= len || target_index >= len {
+                return;
+            }
+
+            let index = len.saturating_sub(index + 1);
+            let target_index = len.saturating_sub(target_index + 1);
 
             match drop_position {
                 DropPosition::Before | DropPosition::After => {
@@ -223,7 +230,7 @@ impl<'a> Cards {
                             target_index
                         };
 
-                        item.index = insert_index as u8;
+                        item.set_index(insert_index as u8);
 
                         self.elements.insert(insert_index, item);
                     }
@@ -231,8 +238,8 @@ impl<'a> Cards {
                 DropPosition::Swap => {
                     if target_index != index {
                         self.elements.swap(index, target_index);
-                        self.elements[index].index = index as u8;
-                        self.elements[target_index].index = target_index as u8;
+                        self.elements[index].set_index(index as u8);
+                        self.elements[target_index].set_index(target_index as u8);
                     }
                 }
             }

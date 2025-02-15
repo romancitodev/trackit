@@ -5,14 +5,14 @@ pub mod chrono {
 
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Task {
     pub name: String,
     pub cycles: u8,
-    pub started_at: Option<DateTime<Utc>>,
+    pub started_at: Option<DateTime<Local>>,
     pub elapsed: Duration,
 }
 
